@@ -14,7 +14,27 @@ st.set_page_config(
 def load_data():
     try:
         df = pd.read_csv('data/processed_contracts.csv')
-        df['PostedDate'] = pd.to_datetime(df['PostedDate'], errors='coerce')
+        
+        # Try both possible column names for date
+        date_col = None
+        for col in ['Date Posted', 'PostedDate']:
+            if col in df.columns:
+                date_col = col
+                break
+        
+        if date_col:
+            df['PostedDate'] = pd.to_datetime(df[date_col], errors='coerce')
+        
+        # Standardize country column name
+        country_col = None
+        for col in ['Country', 'PopCountry']:
+            if col in df.columns:
+                country_col = col
+                break
+        
+        if country_col and country_col != 'PopCountry':
+            df['PopCountry'] = df[country_col]
+        
         return df
     except Exception as e:
         st.error(f"Error loading data: {e}")
@@ -156,10 +176,12 @@ def main():
             if selected_countries:
                 filtered_df = filtered_df[filtered_df['PopCountry'].isin(selected_countries)]
             
-            # Display columns
+            # Display columns - try both naming conventions
             display_cols = [
                 'Title', 'PostedDate', 'PopCountry', 'Agency', 
-                'NaicsCode', 'ClassificationCode', 'ResponseDeadLine'
+                'NaicsCode', 'ClassificationCode', 'ResponseDeadLine',
+                'Date Posted', 'Country', 'Industry Classification',
+                'Product/Service Classification', 'Response Deadline'
             ]
             available_cols = [c for c in display_cols if c in filtered_df.columns]
             
