@@ -14,27 +14,7 @@ st.set_page_config(
 def load_data():
     try:
         df = pd.read_csv('data/processed_contracts.csv')
-        
-        # Try both possible column names for date
-        date_col = None
-        for col in ['Date Posted', 'PostedDate']:
-            if col in df.columns:
-                date_col = col
-                break
-        
-        if date_col:
-            df['PostedDate'] = pd.to_datetime(df[date_col], errors='coerce')
-        
-        # Standardize country column name
-        country_col = None
-        for col in ['Country', 'PopCountry']:
-            if col in df.columns:
-                country_col = col
-                break
-        
-        if country_col and country_col != 'PopCountry':
-            df['PopCountry'] = df[country_col]
-        
+        df['DatePosted'] = pd.to_datetime(df['Date Posted'], errors='coerce')
         return df
     except Exception as e:
         st.error(f"Error loading data: {e}")
@@ -73,8 +53,8 @@ def main():
         st.warning("No data available. Please run data_processor.py first.")
         return
     
-    # Add continent column
-    df['Continent'] = df['PopCountry'].apply(lambda x: get_continent(x, continent_mapping))
+    # Add continent column using 'Country' column
+    df['Continent'] = df['Country'].apply(lambda x: get_continent(x, continent_mapping))
     
     # Calculate continent counts
     continent_counts = df[df['Continent'] != 'Unknown'].groupby('Continent').size().reset_index(name='Count')
@@ -142,7 +122,7 @@ def main():
             # Date filter
             col1, col2 = st.columns(2)
             with col1:
-                min_date = continent_df['PostedDate'].min()
+                min_date = continent_df['DatePosted'].min()
                 if pd.isna(min_date):
                     min_date = datetime(2023, 1, 1)
                 start_date = st.date_input(
@@ -151,7 +131,7 @@ def main():
                     key=f"start_{continent_name}"
                 )
             with col2:
-                max_date = continent_df['PostedDate'].max()
+                max_date = continent_df['DatePosted'].max()
                 if pd.isna(max_date):
                     max_date = datetime.now()
                 end_date = st.date_input(
@@ -161,11 +141,11 @@ def main():
                 )
             
             # Filter by date
-            mask = (continent_df['PostedDate'].dt.date >= start_date) & (continent_df['PostedDate'].dt.date <= end_date)
+            mask = (continent_df['DatePosted'].dt.date >= start_date) & (continent_df['DatePosted'].dt.date <= end_date)
             filtered_df = continent_df[mask]
             
             # Country filter
-            countries = sorted(filtered_df['PopCountry'].dropna().unique())
+            countries = sorted(filtered_df['Country'].dropna().unique())
             selected_countries = st.multiselect(
                 "Filter by Country",
                 options=countries,
@@ -174,20 +154,19 @@ def main():
             )
             
             if selected_countries:
-                filtered_df = filtered_df[filtered_df['PopCountry'].isin(selected_countries)]
+                filtered_df = filtered_df[filtered_df['Country'].isin(selected_countries)]
             
-            # Display columns - try both naming conventions
+            # Display columns
             display_cols = [
-                'Title', 'PostedDate', 'PopCountry', 'Agency', 
-                'NaicsCode', 'ClassificationCode', 'ResponseDeadLine',
-                'Date Posted', 'Country', 'Industry Classification',
-                'Product/Service Classification', 'Response Deadline'
+                'Notice ID', 'Date Posted', 'Country', 'Federal Agency/Department',
+                'Industry Classification', 'Product/Service Classification', 
+                'Response Deadline', 'Type of Opportunity'
             ]
             available_cols = [c for c in display_cols if c in filtered_df.columns]
             
             # Show dataframe
             st.dataframe(
-                filtered_df[available_cols].sort_values('PostedDate', ascending=False),
+                filtered_df[available_cols].sort_values('DatePosted', ascending=False),
                 use_container_width=True,
                 height=400
             )
