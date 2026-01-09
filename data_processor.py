@@ -1,318 +1,208 @@
-"""
-SAM.gov Contract Opportunities Data Processor
-Downloads and processes the SAM.gov CSV file for Spirit of America dashboard.
-"""
-
+import streamlit as st
 import pandas as pd
-import requests
-import os
+import plotly.express as px
 from datetime import datetime
-import sys
+import re
 
-# Configuration
-SAM_GOV_URL = "https://sam.gov/api/prod/fileextractservices/v2/download/Contract%20Opportunities/datagov/Contract%20Opportunities%20Full%20CSV?random={}"
-OUTPUT_FILE = "data/processed_contracts.csv"
-NAICS_FILE = "reference_data/NaicsCode_Descriptions.csv"
-CLASSIFICATION_FILE = "reference_data/ClassificationCode_Descriptions.csv"
-COUNTRIES_FILE = "reference_data/PopCountry_by_Continent.csv"
+st.set_page_config(
+    page_title="SAM.gov Global Contract Opportunities",
+    page_icon="🌍",
+    layout="wide"
+)
 
-# Columns to keep from SAM.gov CSV (original names)
-COLUMNS_TO_KEEP = [
-    'PostedDate',
-    'ResponseDeadLine',
-    'PopCountry',
-    'NaicsCode',
-    'ClassificationCode',
-    'Type',
-    'Department/Ind.Agency',
-    'Sub-Tier',
-    'Description',
-    'Award$',
-    'Active',
-    'AwardDate',
-    'Awardee',
-    'ArchiveDate',
-    'Link',
-    'NoticeId',
-    'Sol#',
-    'AwardNumber'
-]
-
-# Column renaming map
-COLUMN_RENAME = {
-    'PostedDate': 'Date Posted',
-    'ResponseDeadLine': 'Response Deadline',
-    'PopCountry': 'Country',
-    'NaicsCode': 'Industry Classification',
-    'ClassificationCode': 'Product/Service Classification',
-    'Type': 'Type of Opportunity',
-    'Department/Ind.Agency': 'Federal Agency/Department',
-    'Sub-Tier': 'Sub-Agency/Department',
-    'Description': 'Opportunity Description',
-    'Award$': 'Award Amount $',
-    'Active': 'Active?',
-    'AwardDate': 'Date Awarded',
-    'Awardee': 'Awardee',
-    'ArchiveDate': 'Date Archived',
-    'Link': 'SAM.gov Link',
-    'NoticeId': 'Notice ID',
-    'Sol#': 'Solicitation #',
-    'AwardNumber': 'Award Number'
-}
-
-# Country code to name mapping
-COUNTRY_NAMES = {
-    "DZA": "Algeria", "AGO": "Angola", "BEN": "Benin", "BWA": "Botswana",
-    "BFA": "Burkina Faso", "BDI": "Burundi", "CPV": "Cabo Verde", "CMR": "Cameroon",
-    "CAF": "Central African Republic", "TCD": "Chad", "COM": "Comoros", "COG": "Congo",
-    "COD": "Democratic Republic of the Congo", "DJI": "Djibouti", "EGY": "Egypt",
-    "GNQ": "Equatorial Guinea", "ERI": "Eritrea", "SWZ": "Eswatini", "ETH": "Ethiopia",
-    "GAB": "Gabon", "GMB": "Gambia", "GHA": "Ghana", "GIN": "Guinea", "GNB": "Guinea-Bissau",
-    "CIV": "Côte d'Ivoire", "KEN": "Kenya", "LSO": "Lesotho", "LBR": "Liberia",
-    "LBY": "Libya", "MDG": "Madagascar", "MWI": "Malawi", "MLI": "Mali", "MRT": "Mauritania",
-    "MUS": "Mauritius", "MAR": "Morocco", "MOZ": "Mozambique", "NAM": "Namibia",
-    "NER": "Niger", "NGA": "Nigeria", "RWA": "Rwanda", "STP": "Sao Tome and Principe",
-    "SEN": "Senegal", "SYC": "Seychelles", "SLE": "Sierra Leone", "SOM": "Somalia",
-    "ZAF": "South Africa", "SSD": "South Sudan", "SDN": "Sudan", "TZA": "Tanzania",
-    "TGO": "Togo", "TUN": "Tunisia", "UGA": "Uganda", "ZMB": "Zambia", "ZWE": "Zimbabwe",
-    "AFG": "Afghanistan", "ARM": "Armenia", "AZE": "Azerbaijan", "BHR": "Bahrain",
-    "BGD": "Bangladesh", "BTN": "Bhutan", "BRN": "Brunei", "KHM": "Cambodia",
-    "CHN": "China", "CYP": "Cyprus", "GEO": "Georgia", "IND": "India", "IDN": "Indonesia",
-    "IRN": "Iran", "IRQ": "Iraq", "ISR": "Israel", "JPN": "Japan", "JOR": "Jordan",
-    "KAZ": "Kazakhstan", "KWT": "Kuwait", "KGZ": "Kyrgyzstan", "LAO": "Laos",
-    "LBN": "Lebanon", "MYS": "Malaysia", "MDV": "Maldives", "MNG": "Mongolia",
-    "MMR": "Myanmar", "NPL": "Nepal", "PRK": "North Korea", "OMN": "Oman",
-    "PAK": "Pakistan", "PHL": "Philippines", "QAT": "Qatar", "SAU": "Saudi Arabia",
-    "SGP": "Singapore", "KOR": "South Korea", "LKA": "Sri Lanka", "SYR": "Syria",
-    "TWN": "Taiwan", "TJK": "Tajikistan", "THA": "Thailand", "TLS": "Timor-Leste",
-    "TUR": "Turkey", "TKM": "Turkmenistan", "ARE": "United Arab Emirates",
-    "UZB": "Uzbekistan", "VNM": "Vietnam", "HKG": "Hong Kong", "MAC": "Macau",
-    "ALB": "Albania", "AND": "Andorra", "AUT": "Austria", "BLR": "Belarus",
-    "BEL": "Belgium", "BIH": "Bosnia and Herzegovina", "BGR": "Bulgaria",
-    "HRV": "Croatia", "CZE": "Czech Republic", "DNK": "Denmark", "EST": "Estonia",
-    "FIN": "Finland", "FRA": "France", "DEU": "Germany", "GRC": "Greece",
-    "HUN": "Hungary", "ISL": "Iceland", "IRL": "Ireland", "ITA": "Italy",
-    "XKX": "Kosovo", "LVA": "Latvia", "LIE": "Liechtenstein", "LTU": "Lithuania",
-    "LUX": "Luxembourg", "MLT": "Malta", "MDA": "Moldova", "MCO": "Monaco",
-    "MNE": "Montenegro", "NLD": "Netherlands", "MKD": "North Macedonia",
-    "NOR": "Norway", "POL": "Poland", "PRT": "Portugal", "ROU": "Romania",
-    "SMR": "San Marino", "SRB": "Serbia", "SVK": "Slovakia", "SVN": "Slovenia",
-    "ESP": "Spain", "SWE": "Sweden", "CHE": "Switzerland", "UKR": "Ukraine",
-    "GBR": "United Kingdom", "VAT": "Vatican City",
-    "ATG": "Antigua and Barbuda", "BHS": "Bahamas", "BRB": "Barbados", "BLZ": "Belize",
-    "CAN": "Canada", "CRI": "Costa Rica", "CUB": "Cuba", "DMA": "Dominica",
-    "DOM": "Dominican Republic", "SLV": "El Salvador", "GRD": "Grenada",
-    "GTM": "Guatemala", "HTI": "Haiti", "HND": "Honduras", "JAM": "Jamaica",
-    "MEX": "Mexico", "NIC": "Nicaragua", "PAN": "Panama", "KNA": "Saint Kitts and Nevis",
-    "LCA": "Saint Lucia", "VCT": "Saint Vincent and the Grenadines",
-    "TTO": "Trinidad and Tobago", "ARG": "Argentina", "BOL": "Bolivia", "BRA": "Brazil",
-    "CHL": "Chile", "COL": "Colombia", "ECU": "Ecuador", "GUY": "Guyana",
-    "PRY": "Paraguay", "PER": "Peru", "SUR": "Suriname", "URY": "Uruguay", "VEN": "Venezuela",
-    "AUS": "Australia", "FJI": "Fiji", "KIR": "Kiribati", "MHL": "Marshall Islands",
-    "FSM": "Micronesia", "NRU": "Nauru", "NZL": "New Zealand", "PLW": "Palau",
-    "PNG": "Papua New Guinea", "WSM": "Samoa", "SLB": "Solomon Islands",
-    "TON": "Tonga", "TUV": "Tuvalu", "VUT": "Vanuatu",
-    "GRL": "Greenland", "PRI": "Puerto Rico", "AIA": "Anguilla", "GUM": "Guam"
-}
-
-
-def load_all_valid_countries():
-    """Load all valid country codes/names from the continent mapping file."""
-    valid_countries = set()
-    
+# Load data
+@st.cache_data
+def load_data():
     try:
-        df = pd.read_csv(COUNTRIES_FILE, encoding='utf-8-sig')
-        for continent in ['AFRICA', 'ASIA', 'EUROPE', 'AMERICAS', 'OCEANIA']:
-            if continent in df.columns:
-                for cell in df[continent].dropna():
-                    parts = cell.replace('"', '').split(',')
-                    for part in parts:
-                        clean = part.strip().upper()
-                        if clean and len(clean) >= 2:
-                            valid_countries.add(clean)
+        df = pd.read_csv('data/processed_contracts.csv')
+        df['DatePosted'] = pd.to_datetime(df['Date Posted'], errors='coerce')
+        return df
     except Exception as e:
-        print(f"Error loading countries file: {e}")
-    
-    return valid_countries
+        st.error(f"Error loading data: {e}")
+        return pd.DataFrame()
 
-
-def load_naics_descriptions():
-    """Load NAICS code descriptions."""
+# Load continent mapping
+@st.cache_data
+def load_continent_mapping():
     try:
-        df = pd.read_csv(NAICS_FILE, encoding='utf-8-sig', dtype=str)
-        df.columns = ['NaicsCode', 'Description']
-        return dict(zip(df['NaicsCode'].astype(str).str.strip(), df['Description']))
+        continent_df = pd.read_csv('reference_data/PopCountry_by_Continent.csv')
+        mapping = {}
+        
+        for continent in continent_df.columns:
+            for cell in continent_df[continent].dropna():
+                # Extract all quoted values from the cell
+                matches = re.findall(r'"([^"]+)"', str(cell))
+                for match in matches:
+                    mapping[match.strip()] = continent
+                    mapping[match.strip().upper()] = continent
+                    mapping[match.strip().lower()] = continent
+        
+        return mapping
     except Exception as e:
-        print(f"Error loading NAICS descriptions: {e}")
+        st.error(f"Error loading continent mapping: {e}")
         return {}
 
-
-def load_classification_descriptions():
-    """Load Classification code descriptions."""
-    try:
-        df = pd.read_csv(CLASSIFICATION_FILE, encoding='utf-8-sig', dtype=str)
-        df.columns = ['ClassificationCode', 'Description']
-        return dict(zip(df['ClassificationCode'].astype(str).str.strip(), df['Description']))
-    except Exception as e:
-        print(f"Error loading Classification descriptions: {e}")
-        return {}
-
-
-def download_sam_csv():
-    """
-    Attempt to download SAM.gov CSV.
-    Returns DataFrame if successful, None if blocked/failed.
-    """
-    print("Attempting to download SAM.gov CSV...")
+def get_continent(country, mapping):
+    if pd.isna(country):
+        return "Unknown"
+    country = str(country).strip()
     
-    # Add random parameter to avoid caching
-    url = SAM_GOV_URL.format(int(datetime.now().timestamp()))
+    if country in mapping:
+        return mapping[country]
+    if country.upper() in mapping:
+        return mapping[country.upper()]
+    if country.lower() in mapping:
+        return mapping[country.lower()]
     
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'text/csv,application/csv,*/*',
-        'Accept-Language': 'en-US,en;q=0.9',
-    }
-    
-    try:
-        response = requests.get(url, headers=headers, timeout=300, stream=True)
-        
-        if response.status_code == 200:
-            # Check if it's actually CSV content
-            content_type = response.headers.get('content-type', '')
-            if 'text' in content_type or 'csv' in content_type:
-                print("Download successful!")
-                # Save to temp file and read
-                temp_file = "data/temp_download.csv"
-                with open(temp_file, 'wb') as f:
-                    for chunk in response.iter_content(chunk_size=8192):
-                        f.write(chunk)
-                
-                df = pd.read_csv(temp_file, encoding='utf-8', dtype=str, low_memory=False)
-                os.remove(temp_file)
-                return df
-            else:
-                print(f"Unexpected content type: {content_type}")
-                return None
-        else:
-            print(f"Download failed with status code: {response.status_code}")
-            return None
-            
-    except Exception as e:
-        print(f"Download error: {e}")
-        return None
-
-
-def process_csv_from_file(filepath):
-    """Process a manually uploaded CSV file."""
-    print(f"Processing file: {filepath}")
-    return pd.read_csv(filepath, encoding='latin-1', dtype=str, low_memory=False)
-
-
-def filter_and_process(df, valid_countries, naics_desc, classification_desc):
-    """Filter to international countries and process data."""
-    print(f"Starting with {len(df)} records")
-    
-    # Filter to only columns we need
-    available_cols = [c for c in COLUMNS_TO_KEEP if c in df.columns]
-    df = df[available_cols].copy()
-    
-    # Filter by PopCountry - only international (non-USA)
-    if 'PopCountry' in df.columns:
-        df['PopCountry'] = df['PopCountry'].astype(str).str.strip().str.upper()
-        
-        # Remove USA and empty
-        df = df[~df['PopCountry'].isin(['USA', 'US', 'UNITED STATES', '', 'NAN'])]
-        
-        # Keep only countries in our valid list
-        df = df[df['PopCountry'].isin(valid_countries)]
-    
-    print(f"After country filter: {len(df)} records")
-    
-    # Filter by date (2023-2025)
-    if 'PostedDate' in df.columns:
-        df['PostedDate'] = pd.to_datetime(df['PostedDate'], errors='coerce', utc=True)
-        df = df[df['PostedDate'].notna()]
-        df = df[(df['PostedDate'].dt.year >= 2023) & (df['PostedDate'].dt.year <= 2025)]
-        df['PostedDate'] = df['PostedDate'].dt.tz_localize(None)
-    
-    print(f"After date filter: {len(df)} records")
-    
-    # Convert country codes to full names
-    if 'PopCountry' in df.columns:
-        df['PopCountry'] = df['PopCountry'].apply(
-            lambda x: COUNTRY_NAMES.get(x, x)
-        )
-    
-    # Convert NAICS codes to descriptions
-    if 'NaicsCode' in df.columns:
-        df['NaicsCode'] = df['NaicsCode'].astype(str).str.strip()
-        df['NaicsCode'] = df['NaicsCode'].apply(
-            lambda x: naics_desc.get(x, x) if pd.notna(x) and x != 'nan' else ''
-        )
-    
-    # Convert Classification codes to descriptions
-    if 'ClassificationCode' in df.columns:
-        df['ClassificationCode'] = df['ClassificationCode'].astype(str).str.strip()
-        df['ClassificationCode'] = df['ClassificationCode'].apply(
-            lambda x: classification_desc.get(x, x) if pd.notna(x) and x != 'nan' else ''
-        )
-    
-    # Rename columns
-    df = df.rename(columns=COLUMN_RENAME)
-    
-    # Remove duplicates based on Notice ID
-    if 'Notice ID' in df.columns:
-        df = df.drop_duplicates(subset=['Notice ID'], keep='last')
-    
-    print(f"Final record count: {len(df)}")
-    
-    return df
-
+    return "Unknown"
 
 def main():
-    """Main processing function."""
-    print(f"=== SAM.gov Data Processor ===")
-    print(f"Run time: {datetime.now()}")
+    st.markdown("<h1 style='margin-bottom: 0;'>SAM.gov Global Contract Opportunities</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='color: gray; margin-top: 0;'>Project by Jack Kozmetsky</p>", unsafe_allow_html=True)
     
-    # Ensure data directory exists
-    os.makedirs('data', exist_ok=True)
+    df = load_data()
+    continent_mapping = load_continent_mapping()
     
-    # Load reference data
-    valid_countries = load_all_valid_countries()
-    print(f"Loaded {len(valid_countries)} valid country codes")
+    if df.empty:
+        st.warning("No data available. Please run data_processor.py first.")
+        return
     
-    naics_desc = load_naics_descriptions()
-    print(f"Loaded {len(naics_desc)} NAICS descriptions")
+    df['Continent'] = df['Country'].apply(lambda x: get_continent(x, continent_mapping))
     
-    classification_desc = load_classification_descriptions()
-    print(f"Loaded {len(classification_desc)} Classification descriptions")
+    continent_counts = df[df['Continent'] != 'Unknown'].groupby('Continent').size().reset_index(name='Count')
+    total_opportunities = continent_counts['Count'].sum()
     
-    # Try to download from SAM.gov
-    df = download_sam_csv()
+    if total_opportunities == 0:
+        st.warning("No countries matched the continent mapping.")
+        st.write("Sample countries in data:", df['Country'].dropna().unique()[:10].tolist())
+        return
     
-    # If download failed, check for manual upload
-    if df is None:
-        manual_file = "data/manual_upload.csv"
-        if os.path.exists(manual_file):
-            print("Using manually uploaded file...")
-            df = process_csv_from_file(manual_file)
-        else:
-            print("ERROR: Could not download from SAM.gov and no manual file found.")
-            print("Please download the CSV manually from:")
-            print("https://sam.gov/data-services/Contract%20Opportunities/datagov?privacy=Public")
-            print("Save it as: data/manual_upload.csv")
-            sys.exit(1)
+    fig = px.pie(
+        continent_counts, 
+        values='Count', 
+        names='Continent',
+        color='Continent',
+        color_discrete_map={
+            'AFRICA': '#FF6B6B',
+            'ASIA': '#4ECDC4',
+            'EUROPE': '#45B7D1',
+            'AMERICAS': '#96CEB4',
+            'OCEANIA': '#FFEAA7'
+        }
+    )
     
-    # Process the data
-    df = filter_and_process(df, valid_countries, naics_desc, classification_desc)
+    fig.update_traces(
+        textposition='inside',
+        textinfo='label+value',
+        hovertemplate='%{label}: %{value} opportunities<extra></extra>'
+    )
     
-    # Save processed data
-    df.to_csv(OUTPUT_FILE, index=False, encoding='utf-8-sig')
-    print(f"Saved {len(df)} records to {OUTPUT_FILE}")
+    fig.update_layout(
+        showlegend=True,
+        legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),
+        margin=dict(t=20, b=80, l=20, r=20),
+        height=350,
+        annotations=[
+            dict(
+                text=f"<b>{total_opportunities}</b><br>Total Opportunities",
+                x=0.5, y=-0.15,
+                font_size=14,
+                showarrow=False,
+                xanchor='center'
+            )
+        ]
+    )
     
-    print("=== Processing Complete ===")
-
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.plotly_chart(fig, use_container_width=True)
+    
+    st.markdown("---")
+    
+    tab_africa, tab_asia, tab_europe, tab_americas, tab_oceania = st.tabs([
+        "🌍 Africa", "🌏 Asia", "🌍 Europe", "🌎 Americas", "🌏 Oceania"
+    ])
+    
+    def display_continent_data(continent_name, container):
+        with container:
+            continent_df = df[df['Continent'] == continent_name].copy()
+            
+            if continent_df.empty:
+                st.info(f"No opportunities found for {continent_name}")
+                return
+            
+            st.markdown(f"**{len(continent_df)} opportunities in {continent_name}**")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                min_date = continent_df['DatePosted'].min()
+                if pd.isna(min_date):
+                    min_date = datetime(2023, 1, 1)
+                start_date = st.date_input(
+                    "Start Date", 
+                    value=min_date,
+                    key=f"start_{continent_name}"
+                )
+            with col2:
+                max_date = continent_df['DatePosted'].max()
+                if pd.isna(max_date):
+                    max_date = datetime.now()
+                end_date = st.date_input(
+                    "End Date", 
+                    value=max_date,
+                    key=f"end_{continent_name}"
+                )
+            
+            mask = (continent_df['DatePosted'].dt.date >= start_date) & (continent_df['DatePosted'].dt.date <= end_date)
+            filtered_df = continent_df[mask]
+            
+            countries = sorted(filtered_df['Country'].dropna().unique())
+            selected_countries = st.multiselect(
+                "Filter by Country",
+                options=countries,
+                default=[],
+                key=f"country_{continent_name}"
+            )
+            
+            if selected_countries:
+                filtered_df = filtered_df[filtered_df['Country'].isin(selected_countries)]
+            
+            display_cols = [
+                'Notice ID', 'Date Posted', 'Country', 'Federal Agency/Department',
+                'Industry Classification', 'Product/Service Classification', 
+                'Response Deadline', 'Type of Opportunity'
+            ]
+            available_cols = [c for c in display_cols if c in filtered_df.columns]
+            
+            # Sort by DatePosted then select only display columns
+            sorted_df = filtered_df.sort_values('DatePosted', ascending=False)
+            
+            st.dataframe(
+                sorted_df[available_cols],
+                use_container_width=True,
+                height=400
+            )
+            
+            csv = filtered_df.to_csv(index=False)
+            st.download_button(
+                label=f"Download {continent_name} Data (CSV)",
+                data=csv,
+                file_name=f"sam_gov_{continent_name.lower()}_contracts.csv",
+                mime="text/csv",
+                key=f"download_{continent_name}"
+            )
+    
+    display_continent_data("AFRICA", tab_africa)
+    display_continent_data("ASIA", tab_asia)
+    display_continent_data("EUROPE", tab_europe)
+    display_continent_data("AMERICAS", tab_americas)
+    display_continent_data("OCEANIA", tab_oceania)
+    
+    st.markdown("---")
+    st.markdown(
+        f"<p style='text-align: center; color: gray;'>Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>",
+        unsafe_allow_html=True
+    )
 
 if __name__ == "__main__":
     main()
