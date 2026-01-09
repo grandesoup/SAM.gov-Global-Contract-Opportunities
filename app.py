@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from datetime import datetime
+import re
 
 st.set_page_config(
     page_title="SAM.gov Global Contract Opportunities",
@@ -26,9 +27,17 @@ def load_continent_mapping():
     try:
         continent_df = pd.read_csv('reference_data/PopCountry_by_Continent.csv')
         mapping = {}
+        
         for continent in continent_df.columns:
-            for country in continent_df[continent].dropna():
-                mapping[country.strip()] = continent
+            for cell in continent_df[continent].dropna():
+                # Extract all quoted values from the cell
+                # Format is like: "Algeria", "DZA"
+                matches = re.findall(r'"([^"]+)"', str(cell))
+                for match in matches:
+                    mapping[match.strip()] = continent
+                    mapping[match.strip().upper()] = continent
+                    mapping[match.strip().lower()] = continent
+        
         return mapping
     except Exception as e:
         st.error(f"Error loading continent mapping: {e}")
@@ -38,7 +47,18 @@ def get_continent(country, mapping):
     if pd.isna(country):
         return "Unknown"
     country = str(country).strip()
-    return mapping.get(country, "Unknown")
+    
+    # Try exact match
+    if country in mapping:
+        return mapping[country]
+    # Try uppercase
+    if country.upper() in mapping:
+        return mapping[country.upper()]
+    # Try lowercase
+    if country.lower() in mapping:
+        return mapping[country.lower()]
+    
+    return "Unknown"
 
 def main():
     # Title and subtitle
@@ -59,6 +79,12 @@ def main():
     # Calculate continent counts
     continent_counts = df[df['Continent'] != 'Unknown'].groupby('Continent').size().reset_index(name='Count')
     total_opportunities = continent_counts['Count'].sum()
+    
+    # If no data matched, show what countries are in the data for debugging
+    if total_opportunities == 0:
+        st.warning("No countries matched the continent mapping.")
+        st.write("Sample countries in data:", df['Country'].dropna().unique()[:10].tolist())
+        return
     
     # Create pie chart
     fig = px.pie(
