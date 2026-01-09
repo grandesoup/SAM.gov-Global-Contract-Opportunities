@@ -3,31 +3,19 @@ import pandas as pd
 from datetime import datetime
 import os
 
-# Page configuration
 st.set_page_config(
     page_title="Spirit of America - Global Contract Opportunities",
     page_icon="🌍",
     layout="wide"
 )
 
-# Constants
 DATA_FILE = "data/processed_contracts.csv"
-NAICS_FILE = "reference_data/NaicsCode_Descriptions.csv"
-CLASSIFICATION_FILE = "reference_data/ClassificationCode_Descriptions.csv"
 COUNTRIES_FILE = "reference_data/PopCountry_by_Continent.csv"
 
 
 @st.cache_data
 def load_continent_countries():
-    """Load and parse country mappings by continent."""
-    continents = {
-        "AFRICA": [],
-        "ASIA": [],
-        "EUROPE": [],
-        "AMERICAS": [],
-        "OCEANIA": []
-    }
-    
+    continents = {"AFRICA": [], "ASIA": [], "EUROPE": [], "AMERICAS": [], "OCEANIA": []}
     try:
         df = pd.read_csv(COUNTRIES_FILE, encoding='utf-8-sig')
         for continent in continents.keys():
@@ -40,13 +28,11 @@ def load_continent_countries():
                             continents[continent].append(clean.upper())
     except Exception as e:
         st.error(f"Error loading country mappings: {e}")
-    
     return continents
 
 
 @st.cache_data
 def load_contract_data():
-    """Load processed contract data."""
     if os.path.exists(DATA_FILE):
         try:
             df = pd.read_csv(DATA_FILE, encoding='utf-8-sig', dtype=str)
@@ -62,25 +48,20 @@ def load_contract_data():
 
 
 def filter_by_continent(df, continent, continent_countries):
-    """Filter dataframe to only include countries in specified continent."""
     if df.empty or 'Country' not in df.columns:
         return df
-    
     countries = continent_countries.get(continent, [])
     if not countries:
         return pd.DataFrame()
-    
     mask = df['Country'].astype(str).str.upper().str.strip().isin(countries)
     return df[mask].copy()
 
 
 def display_data_table(df, key_prefix):
-    """Display interactive data table."""
     if df.empty:
         st.info("No contract opportunities found for this continent.")
         return
     
-    # Country filter
     countries = sorted(df['Country'].dropna().unique().tolist())
     selected_countries = st.multiselect(
         "Filter by Country",
@@ -89,11 +70,9 @@ def display_data_table(df, key_prefix):
         key=f"{key_prefix}_country_filter"
     )
     
-    # Apply country filter
     if selected_countries:
         df = df[df['Country'].isin(selected_countries)]
     
-    # Status filter
     col1, col2 = st.columns(2)
     with col1:
         show_active = st.checkbox("Show Active", value=True, key=f"{key_prefix}_active")
@@ -106,10 +85,8 @@ def display_data_table(df, key_prefix):
         elif show_archived and not show_active:
             df = df[df['Active?'] == 'No']
     
-    # Display count
     st.markdown(f"**Showing {len(df)} opportunities**")
     
-    # Display dataframe with search
     st.dataframe(
         df,
         use_container_width=True,
@@ -124,10 +101,9 @@ def display_data_table(df, key_prefix):
         }
     )
     
-    # Download button
     csv = df.to_csv(index=False).encode('utf-8')
     st.download_button(
-        label="📥 Download as CSV",
+        label="Download as CSV",
         data=csv,
         file_name=f"{key_prefix}_contracts.csv",
         mime="text/csv",
@@ -136,17 +112,14 @@ def display_data_table(df, key_prefix):
 
 
 def main():
-    # Header
-    st.title("🌍 Spirit of America - Global Contract Opportunities")
+    st.title("Spirit of America - Global Contract Opportunities")
     st.markdown("**U.S. Government Contract Opportunities by Place of Performance**")
     
-    # Load data
     continent_countries = load_continent_countries()
     df = load_contract_data()
     
-    # Sidebar
     with st.sidebar:
-        st.header("📊 Data Management")
+        st.header("Data Management")
         
         if os.path.exists(DATA_FILE):
             mod_time = datetime.fromtimestamp(os.path.getmtime(DATA_FILE))
@@ -163,10 +136,10 @@ def main():
         )
         
         if uploaded_file is not None:
-            st.warning("Manual upload processing not yet implemented. Use GitHub Actions.")
+            st.warning("Manual upload processing not yet implemented.")
         
         st.markdown("---")
-        st.subheader("🔍 Date Filter")
+        st.subheader("Date Filter")
         
         min_date = datetime(2023, 1, 1)
         max_date = datetime(2025, 12, 31)
@@ -178,15 +151,12 @@ def main():
             max_value=max_date
         )
     
-    # Apply date filter
     if not df.empty and len(date_range) == 2:
         start_date, end_date = date_range
         if 'Date Posted' in df.columns:
-            mask = (df['Date Posted'] >= pd.Timestamp(start_date)) & \
-                   (df['Date Posted'] <= pd.Timestamp(end_date))
+            mask = (df['Date Posted'] >= pd.Timestamp(start_date)) & (df['Date Posted'] <= pd.Timestamp(end_date))
             df = df[mask]
     
-    # Summary metrics
     if not df.empty:
         col1, col2, col3, col4 = st.columns(4)
         with col1:
@@ -205,13 +175,8 @@ def main():
     
     st.markdown("---")
     
-    # Continent tabs
     tab_africa, tab_asia, tab_europe, tab_americas, tab_oceania = st.tabs([
-        "🌍 AFRICA",
-        "🌏 ASIA", 
-        "🌍 EUROPE",
-        "🌎 AMERICAS",
-        "🌏 OCEANIA"
+        "AFRICA", "ASIA", "EUROPE", "AMERICAS", "OCEANIA"
     ])
     
     with tab_africa:
@@ -239,22 +204,9 @@ def main():
         oceania_df = filter_by_continent(df, "OCEANIA", continent_countries)
         display_data_table(oceania_df, "oceania")
     
-    # Footer
     st.markdown("---")
-    st.markdown(
-        "*Data sourced from [SAM.gov](https://sam.gov/data-services/Contract%20Opportunities/datagov?privacy=Public). "
-        "Updated weekly on Mondays.*"
-    )
+    st.markdown("*Data sourced from SAM.gov. Updated weekly on Mondays.*")
 
 
 if __name__ == "__main__":
     main()
-```
-
-4. Press `Ctrl + S` to save
-
----
-
-## Now retry the install:
-```
-pip install -r requirements.txt
