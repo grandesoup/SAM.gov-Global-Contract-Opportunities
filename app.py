@@ -1,212 +1,198 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
 from datetime import datetime
-import os
 
 st.set_page_config(
-    page_title="Spirit of America - Global Contract Opportunities",
+    page_title="SAM.gov Global Contract Opportunities",
     page_icon="🌍",
     layout="wide"
 )
 
-DATA_FILE = "data/processed_contracts.csv"
-COUNTRIES_FILE = "reference_data/PopCountry_by_Continent.csv"
-
-
+# Load data
 @st.cache_data
-def load_continent_countries():
-    continents = {"AFRICA": [], "ASIA": [], "EUROPE": [], "AMERICAS": [], "OCEANIA": []}
+def load_data():
     try:
-        df = pd.read_csv(COUNTRIES_FILE, encoding='utf-8-sig')
-        for continent in continents.keys():
-            if continent in df.columns:
-                for cell in df[continent].dropna():
-                    parts = cell.replace('"', '').split(',')
-                    for part in parts:
-                        clean = part.strip()
-                        if clean and len(clean) >= 2:
-                            continents[continent].append(clean.upper())
-    except Exception as e:
-        st.error(f"Error loading country mappings: {e}")
-    return continents
-
-
-@st.cache_data
-def load_contract_data():
-    if os.path.exists(DATA_FILE):
-        try:
-            df = pd.read_csv(DATA_FILE, encoding='utf-8-sig', dtype=str)
-            date_cols = ['Date Posted', 'Response Deadline', 'Date Awarded', 'Date Archived']
-            for col in date_cols:
-                if col in df.columns:
-                    df[col] = pd.to_datetime(df[col], errors='coerce')
-            return df
-        except Exception as e:
-            st.error(f"Error loading contract data: {e}")
-            return pd.DataFrame()
-    return pd.DataFrame()
-
-
-def filter_by_continent(df, continent, continent_countries):
-    if df.empty or 'Country' not in df.columns:
+        df = pd.read_csv('data/processed_contracts.csv')
+        df['PostedDate'] = pd.to_datetime(df['PostedDate'], errors='coerce')
         return df
-    countries = continent_countries.get(continent, [])
-    if not countries:
+    except Exception as e:
+        st.error(f"Error loading data: {e}")
         return pd.DataFrame()
-    mask = df['Country'].astype(str).str.upper().str.strip().isin(countries)
-    return df[mask].copy()
 
+# Load continent mapping
+@st.cache_data
+def load_continent_mapping():
+    try:
+        continent_df = pd.read_csv('reference_data/PopCountry_by_Continent.csv')
+        mapping = {}
+        for continent in continent_df.columns:
+            for country in continent_df[continent].dropna():
+                mapping[country.strip()] = continent
+        return mapping
+    except Exception as e:
+        st.error(f"Error loading continent mapping: {e}")
+        return {}
 
-def display_data_table(df, key_prefix):
+def get_continent(country, mapping):
+    if pd.isna(country):
+        return "Unknown"
+    country = str(country).strip()
+    return mapping.get(country, "Unknown")
+
+def main():
+    # Title and subtitle
+    st.markdown("<h1 style='margin-bottom: 0;'>SAM.gov Global Contract Opportunities</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='color: gray; margin-top: 0;'>Project by Jack Kozmetsky</p>", unsafe_allow_html=True)
+    
+    # Load data
+    df = load_data()
+    continent_mapping = load_continent_mapping()
+    
     if df.empty:
-        st.info("No contract opportunities found for this continent.")
+        st.warning("No data available. Please run data_processor.py first.")
         return
     
-    countries = sorted(df['Country'].dropna().unique().tolist())
-    selected_countries = st.multiselect(
-        "Filter by Country",
-        options=countries,
-        default=[],
-        key=f"{key_prefix}_country_filter"
-    )
+    # Add continent column
+    df['Continent'] = df['PopCountry'].apply(lambda x: get_continent(x, continent_mapping))
     
-    if selected_countries:
-        df = df[df['Country'].isin(selected_countries)]
+    # Calculate continent counts
+    continent_counts = df[df['Continent'] != 'Unknown'].groupby('Continent').size().reset_index(name='Count')
+    total_opportunities = continent_counts['Count'].sum()
     
-    col1, col2 = st.columns(2)
-    with col1:
-        show_active = st.checkbox("Show Active", value=True, key=f"{key_prefix}_active")
-    with col2:
-        show_archived = st.checkbox("Show Archived", value=True, key=f"{key_prefix}_archived")
-    
-    if 'Active?' in df.columns:
-        if show_active and not show_archived:
-            df = df[df['Active?'] == 'Yes']
-        elif show_archived and not show_active:
-            df = df[df['Active?'] == 'No']
-    
-    st.markdown(f"**Showing {len(df)} opportunities**")
-    
-    st.dataframe(
-        df,
-        use_container_width=True,
-        height=600,
-        column_config={
-            "SAM.gov Link": st.column_config.LinkColumn("SAM.gov Link"),
-            "Award Amount $": st.column_config.NumberColumn("Award Amount $", format="$%d"),
-            "Date Posted": st.column_config.DateColumn("Date Posted"),
-            "Response Deadline": st.column_config.DateColumn("Response Deadline"),
-            "Date Awarded": st.column_config.DateColumn("Date Awarded"),
-            "Date Archived": st.column_config.DateColumn("Date Archived"),
+    # Create pie chart
+    fig = px.pie(
+        continent_counts, 
+        values='Count', 
+        names='Continent',
+        color='Continent',
+        color_discrete_map={
+            'AFRICA': '#FF6B6B',
+            'ASIA': '#4ECDC4',
+            'EUROPE': '#45B7D1',
+            'AMERICAS': '#96CEB4',
+            'OCEANIA': '#FFEAA7'
         }
     )
     
-    csv = df.to_csv(index=False).encode('utf-8')
-    st.download_button(
-        label="Download as CSV",
-        data=csv,
-        file_name=f"{key_prefix}_contracts.csv",
-        mime="text/csv",
-        key=f"{key_prefix}_download"
+    fig.update_traces(
+        textposition='inside',
+        textinfo='label+value',
+        hovertemplate='%{label}: %{value} opportunities<extra></extra>'
     )
-
-
-def main():
-    st.title("Spirit of America - Global Contract Opportunities")
-    st.markdown("**U.S. Government Contract Opportunities by Place of Performance**")
     
-    continent_countries = load_continent_countries()
-    df = load_contract_data()
+    fig.update_layout(
+        showlegend=True,
+        legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),
+        margin=dict(t=20, b=80, l=20, r=20),
+        height=350,
+        annotations=[
+            dict(
+                text=f"<b>{total_opportunities}</b><br>Total Opportunities",
+                x=0.5, y=-0.15,
+                font_size=14,
+                showarrow=False,
+                xanchor='center'
+            )
+        ]
+    )
     
-    with st.sidebar:
-        st.header("Data Management")
-        
-        if os.path.exists(DATA_FILE):
-            mod_time = datetime.fromtimestamp(os.path.getmtime(DATA_FILE))
-            st.info(f"Last updated: {mod_time.strftime('%Y-%m-%d %H:%M')}")
-        
-        st.markdown("---")
-        st.subheader("Manual Data Upload")
-        st.markdown("If automatic updates fail, upload the SAM.gov CSV manually:")
-        
-        uploaded_file = st.file_uploader(
-            "Upload ContractOpportunitiesFullCSV.csv",
-            type=['csv'],
-            help="Download from sam.gov/data-services"
-        )
-        
-        if uploaded_file is not None:
-            st.warning("Manual upload processing not yet implemented.")
-        
-        st.markdown("---")
-        st.subheader("Date Filter")
-        
-        min_date = datetime(2023, 1, 1)
-        max_date = datetime(2025, 12, 31)
-        
-        date_range = st.date_input(
-            "Date Range",
-            value=(min_date, max_date),
-            min_value=min_date,
-            max_value=max_date
-        )
-    
-    if not df.empty and len(date_range) == 2:
-        start_date, end_date = date_range
-        if 'Date Posted' in df.columns:
-            mask = (df['Date Posted'] >= pd.Timestamp(start_date)) & (df['Date Posted'] <= pd.Timestamp(end_date))
-            df = df[mask]
-    
-    if not df.empty:
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            st.metric("Total Opportunities", len(df))
-        with col2:
-            active_count = len(df[df['Active?'] == 'Yes']) if 'Active?' in df.columns else 0
-            st.metric("Active", active_count)
-        with col3:
-            countries = df['Country'].nunique() if 'Country' in df.columns else 0
-            st.metric("Countries", countries)
-        with col4:
-            agencies = df['Federal Agency/Department'].nunique() if 'Federal Agency/Department' in df.columns else 0
-            st.metric("Agencies", agencies)
-    else:
-        st.warning("No data loaded. Run the data processor or upload data manually.")
+    # Display pie chart centered
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.plotly_chart(fig, use_container_width=True)
     
     st.markdown("---")
     
+    # Create tabs for each continent
     tab_africa, tab_asia, tab_europe, tab_americas, tab_oceania = st.tabs([
-        "AFRICA", "ASIA", "EUROPE", "AMERICAS", "OCEANIA"
+        "🌍 Africa", "🌏 Asia", "🌍 Europe", "🌎 Americas", "🌏 Oceania"
     ])
     
-    with tab_africa:
-        st.header("Africa Contract Opportunities")
-        africa_df = filter_by_continent(df, "AFRICA", continent_countries)
-        display_data_table(africa_df, "africa")
+    def display_continent_data(continent_name, container):
+        with container:
+            continent_df = df[df['Continent'] == continent_name].copy()
+            
+            if continent_df.empty:
+                st.info(f"No opportunities found for {continent_name}")
+                return
+            
+            st.markdown(f"**{len(continent_df)} opportunities in {continent_name}**")
+            
+            # Date filter
+            col1, col2 = st.columns(2)
+            with col1:
+                min_date = continent_df['PostedDate'].min()
+                if pd.isna(min_date):
+                    min_date = datetime(2023, 1, 1)
+                start_date = st.date_input(
+                    "Start Date", 
+                    value=min_date,
+                    key=f"start_{continent_name}"
+                )
+            with col2:
+                max_date = continent_df['PostedDate'].max()
+                if pd.isna(max_date):
+                    max_date = datetime.now()
+                end_date = st.date_input(
+                    "End Date", 
+                    value=max_date,
+                    key=f"end_{continent_name}"
+                )
+            
+            # Filter by date
+            mask = (continent_df['PostedDate'].dt.date >= start_date) & (continent_df['PostedDate'].dt.date <= end_date)
+            filtered_df = continent_df[mask]
+            
+            # Country filter
+            countries = sorted(filtered_df['PopCountry'].dropna().unique())
+            selected_countries = st.multiselect(
+                "Filter by Country",
+                options=countries,
+                default=[],
+                key=f"country_{continent_name}"
+            )
+            
+            if selected_countries:
+                filtered_df = filtered_df[filtered_df['PopCountry'].isin(selected_countries)]
+            
+            # Display columns
+            display_cols = [
+                'Title', 'PostedDate', 'PopCountry', 'Agency', 
+                'NaicsCode', 'ClassificationCode', 'ResponseDeadLine'
+            ]
+            available_cols = [c for c in display_cols if c in filtered_df.columns]
+            
+            # Show dataframe
+            st.dataframe(
+                filtered_df[available_cols].sort_values('PostedDate', ascending=False),
+                use_container_width=True,
+                height=400
+            )
+            
+            # Download button
+            csv = filtered_df.to_csv(index=False)
+            st.download_button(
+                label=f"Download {continent_name} Data (CSV)",
+                data=csv,
+                file_name=f"sam_gov_{continent_name.lower()}_contracts.csv",
+                mime="text/csv",
+                key=f"download_{continent_name}"
+            )
     
-    with tab_asia:
-        st.header("Asia Contract Opportunities")
-        asia_df = filter_by_continent(df, "ASIA", continent_countries)
-        display_data_table(asia_df, "asia")
+    # Display data for each continent
+    display_continent_data("AFRICA", tab_africa)
+    display_continent_data("ASIA", tab_asia)
+    display_continent_data("EUROPE", tab_europe)
+    display_continent_data("AMERICAS", tab_americas)
+    display_continent_data("OCEANIA", tab_oceania)
     
-    with tab_europe:
-        st.header("Europe Contract Opportunities")
-        europe_df = filter_by_continent(df, "EUROPE", continent_countries)
-        display_data_table(europe_df, "europe")
-    
-    with tab_americas:
-        st.header("Americas Contract Opportunities")
-        americas_df = filter_by_continent(df, "AMERICAS", continent_countries)
-        display_data_table(americas_df, "americas")
-    
-    with tab_oceania:
-        st.header("Oceania Contract Opportunities")
-        oceania_df = filter_by_continent(df, "OCEANIA", continent_countries)
-        display_data_table(oceania_df, "oceania")
-    
+    # Footer
     st.markdown("---")
-    st.markdown("*Data sourced from SAM.gov. Updated weekly on Mondays.*")
-
+    st.markdown(
+        f"<p style='text-align: center; color: gray;'>Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>",
+        unsafe_allow_html=True
+    )
 
 if __name__ == "__main__":
     main()
