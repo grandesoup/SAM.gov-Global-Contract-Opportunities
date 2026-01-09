@@ -1,0 +1,19 @@
+﻿SAM.gov CSV Column Header,New Headers for Database Tables on Streamlit
+PostedDate,Date Posted
+ResponseDeadLine,Response Deadline
+PopCountry,Country
+NaicsCode,Industry Classification
+ClassificationCode,Product/Service Classification
+Type,Type of Opportunity
+Department/Ind.Agency,Federal Agency/Department
+Sub-Tier,Sub-Agency/Department
+Description,Opporuntity Description
+Award$,Award Amount $
+Active,Active?
+AwardDate,Date Awarded
+Awardee,Awardee
+ArchiveDate,Date Archived
+Link,SAM.gov Link
+NoticeId,Notice ID
+Sol#,Solicitation #
+AwardNumber,Award Number

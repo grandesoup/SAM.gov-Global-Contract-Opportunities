@@ -1,0 +1,55 @@
+﻿AFRICA,ASIA,EUROPE,AMERICAS,OCEANIA
+"""Algeria"", ""DZA""","""Afghanistan"", ""AFG""","""Albania"", ""ALB""","""Antigua and Barbuda"", ""ATG""","""Australia"", ""AUS"""
+"""Angola"", ""AGO""","""Armenia"", ""ARM""","""Andorra"", ""AND""","""Bahamas"", ""BHS""","""Fiji"", ""FJI"""
+"""Benin"", ""BEN""","""Azerbaijan"", ""AZE""","""Austria"", ""AUT""","""Barbados"", ""BRB""","""Kiribati"", ""KIR"""
+"""Botswana"", ""BWA""","""Bahrain"", ""BHR""","""Belarus"", ""BLR""","""Belize"", ""BLZ""","""Marshall Islands"", ""MHL"""
+"""Burkina Faso"", ""BFA""","""Bangladesh"", ""BGD""","""Belgium"", ""BEL""","""Canada"", ""CAN""","""Micronesia"", ""Federated States of Micronesia"", ""FSM"""
+"""Burundi"", ""BDI""","""Bhutan"", ""BTN""","""Bosnia and Herzegovina"", ""BIH""","""Costa Rica"", ""CRI""","""Nauru"", ""NRU"""
+"""Cabo Verde"", ""CPV""","""Brunei"", ""BRN""","""Bulgaria"", ""BGR""","""Cuba"", ""CUB""","""New Zealand"", ""NZL"""
+"""Cameroon"", ""CMR""","""Cambodia"", ""KHM""","""Croatia"", ""HRV""","""Dominica"", ""DMA""","""Palau"", ""PLW"""
+"""Central African Republic"", ""CAF""","""China"", ""CHN""","""Czech Republic"", ""CZE""","""Dominican Republic"", ""DOM""","""Papua New Guinea"", ""PNG"""
+"""Chad"", ""TCD""","""Cyprus"", ""CYP""","""Denmark"", ""DNK""","""El Salvador"", ""SLV""","""Samoa"", ""WSM"""
+"""Comoros"", ""COM""","""Georgia"", ""GEO""","""Estonia"", ""EST""","""Grenada"", ""GRD""","""Solomon Islands"", ""SLB"""
+"""Congo"", ""COG""","""India"", ""IND""","""Finland"", ""FIN""","""Guatemala"", ""GTM""","""Tonga"", ""TON"""
+"""Democratic Republic of the Congo"", ""COD""","""Indonesia"", ""IDN""","""France"", ""FRA""","""Haiti"", ""HTI""","""Tuvalu"", ""TUV"""
+"""Djibouti"", ""DJI""","""Iran"", ""IRN""","""Germany"", ""DEU""","""Honduras"", ""HND""","""Vanuatu"", ""VUT"""
+"""Egypt"", ""EGY""","""Iraq"", ""IRQ""","""Greece"", ""GRC""","""Jamaica"", ""JAM""","""Norfolk Island"", ""NFK"""
+"""Equatorial Guinea"", ""GNQ""","""Israel"", ""ISR""","""Hungary"", ""HUN""","""Mexico"", ""MEX""","""Christmas Island"", ""CXR"""
+"""Eritrea"", ""ERI""","""Japan"", ""JPN""","""Iceland"", ""ISL""","""Nicaragua"", ""NIC""","""Cocos Islands"", ""Keeling Islands"", ""CCK"""
+"""Eswatini"", ""SWZ""","""Jordan"", ""JOR""","""Ireland"", ""IRL""","""Panama"", ""PAN""","""Heard Island"", ""HMD"""
+"""Ethiopia"", ""ETH""","""Kazakhstan"", ""KAZ""","""Italy"", ""ITA""","""Saint Kitts and Nevis"", ""KNA""","""McDonald Islands"", ""HMD"""
+"""Gabon"", ""GAB""","""Kuwait"", ""KWT""","""Kosovo"", ""XKX""","""Saint Lucia"", ""LCA""","""Cook Islands"", ""COK"""
+"""Gambia"", ""GMB""","""Kyrgyzstan"", ""KGZ""","""Latvia"", ""LVA""","""Saint Vincent and the Grenadines"", ""VCT""","""Niue"", ""NIU"""
+"""Ghana"", ""GHA""","""Laos"", ""LAO""","""Liechtenstein"", ""LIE""","""Trinidad and Tobago"", ""TTO""","""Tokelau"", ""TKL"""
+"""Guinea"", ""GIN""","""Lebanon"", ""LBN""","""Lithuania"", ""LTU""","""Greenland"", ""GRL""","""Guam"", ""GUM"""
+"""Guinea-Bissau"", ""GNB""","""Malaysia"", ""MYS""","""Luxembourg"", ""LUX""","""Puerto Rico"", ""PRI""",
+"""Côte d'Ivoire"", ""Ivory Coast"", ""CIV""","""Maldives"", ""MDV""","""Malta"", ""MLT""","""Anguilla"", ""AIA""",
+"""Kenya"", ""KEN""","""Mongolia"", ""MNG""","""Moldova"", ""MDA""","""Saint Barthélemy"", ""BLM""",
+"""Lesotho"", ""LSO""","""Myanmar"", ""MMR""","""Monaco"", ""MCO""","""Sint Maarten"", ""SXM""",
+"""Liberia"", ""LBR""","""Nepal"", ""NPL""","""Montenegro"", ""MNE""","""Saba"", ""SAB""",
+"""Libya"", ""LBY""","""North Korea"", ""PRK""","""Netherlands"", ""NLD""","""Sint Eustatius"", ""EUX""",
+"""Madagascar"", ""MDG""","""Oman"", ""OMN""","""North Macedonia"", ""MKD""","""Montserrat"", ""MSR""",
+"""Malawi"", ""MWI""","""Pakistan"", ""PAK""","""Norway"", ""NOR""","""Guadeloupe"", ""GLP""",
+"""Mali"", ""MLI""","""Philippines"", ""PHL""","""Poland"", ""POL""","""Martinique"", ""MTQ""",
+"""Mauritania"", ""MRT""","""Qatar"", ""QAT""","""Portugal"", ""PRT""","""Aruba"", ""ABW""",
+"""Mauritius"", ""MUS""","""Saudi Arabia"", ""SAU""","""Romania"", ""ROU""","""Curaçao"", ""CUW""",
+"""Morocco"", ""MAR""","""Singapore"", ""SGP""","""San Marino"", ""SMR""","""Bonaire"", ""BES""",
+"""Mozambique"", ""MOZ""","""South Korea"", ""KOR""","""Serbia"", ""SRB""","""Argentina"", ""ARG""",
+"""Namibia"", ""NAM""","""Sri Lanka"", ""LKA""","""Slovakia"", ""SVK""","""Bolivia"", ""BOL""",
+"""Niger"", ""NER""","""Syria"", ""SYR""","""Slovenia"", ""SVN""","""Brazil"", ""BRA""",
+"""Nigeria"", ""NGA""","""Taiwan"", ""TWN""","""Spain"", ""ESP""","""Chile"", ""CHL""",
+"""Rwanda"", ""RWA""","""Tajikistan"", ""TJK""","""Sweden"", ""SWE""","""Colombia"", ""COL""",
+"""Sao Tome and Principe"", ""STP""","""Thailand"", ""THA""","""Switzerland"", ""CHE""","""Ecuador"", ""ECU""",
+"""Senegal"", ""SEN""","""Timor-Leste"", ""TLS""","""Ukraine"", ""UKR""","""Guyana"", ""GUY""",
+"""Seychelles"", ""SYC""","""Turkey"", ""TUR""","""United Kingdom"", ""GBR""","""Paraguay"", ""PRY""",
+"""Sierra Leone"", ""SLE""","""Turkmenistan"", ""TKM""","""Vatican City"", ""VAT""","""Peru"", ""PER""",
+"""Somalia"", ""SOM""","""United Arab Emirates"", ""ARE""","""Svalbard"", ""SJM""","""Suriname"", ""SUR""",
+"""South Africa"", ""ZAF""","""Uzbekistan"", ""UZB""","""Jan Mayen"", ""SJM""","""Uruguay"", ""URY""",
+"""South Sudan"", ""SSD""","""Vietnam"", ""VNM""","""Isle of Man"", ""IMN""","""Venezuela"", ""VEN""",
+"""Sudan"", ""SDN""","""Cocos Islands"", ""Keeling Islands"", ""CCK""","""Jersey"", ""JEY""",,
+"""Tanzania"", ""TZA""","""Hong Kong"", ""HKG""","""Guernsey"", ""GGY""",,
+"""Togo"", ""TGO""","""Macau"", ""MAC""","""Åland Islands"", ""ALA""",,
+"""Tunisia"", ""TUN""",,,,
+"""Uganda"", ""UGA""",,,,
+"""Zambia"", ""ZMB""",,,,
+"""Zimbabwe"", ""ZWE""",,,,
