@@ -206,7 +206,7 @@ def download_sam_csv():
 def process_csv_from_file(filepath):
     """Process a manually uploaded CSV file."""
     print(f"Processing file: {filepath}")
-    return pd.read_csv(filepath, encoding='utf-8', dtype=str, low_memory=False)
+    return pd.read_csv(filepath, encoding='latin-1', dtype=str, low_memory=False)
 
 
 def filter_and_process(df, valid_countries, naics_desc, classification_desc):
@@ -231,9 +231,10 @@ def filter_and_process(df, valid_countries, naics_desc, classification_desc):
     
     # Filter by date (2023-2025)
     if 'PostedDate' in df.columns:
-        df['PostedDate'] = pd.to_datetime(df['PostedDate'], errors='coerce')
+        df['PostedDate'] = pd.to_datetime(df['PostedDate'], errors='coerce', utc=True)
         df = df[df['PostedDate'].notna()]
         df = df[(df['PostedDate'].dt.year >= 2023) & (df['PostedDate'].dt.year <= 2025)]
+        df['PostedDate'] = df['PostedDate'].dt.tz_localize(None)
     
     print(f"After date filter: {len(df)} records")
     
