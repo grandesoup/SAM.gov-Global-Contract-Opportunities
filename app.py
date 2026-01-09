@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 from datetime import datetime
 import re
 
@@ -55,39 +54,13 @@ def get_continent(country, mapping):
     
     return "Unknown"
 
-def create_bar_chart(data, x_col, y_col, title, color='#4ECDC4'):
-    fig = px.bar(
-        data,
-        x=x_col,
-        y=y_col,
-        title=title,
-        color_discrete_sequence=[color]
-    )
-    fig.update_layout(
-        xaxis_tickangle=-45,
-        height=400,
-        margin=dict(t=50, b=100, l=50, r=50),
-        showlegend=False
-    )
-    fig.update_xaxes(title_text='')
-    fig.update_yaxes(title_text='Count')
-    return fig
-
 def display_overview_section(df, section_title, continent_filter=None):
-    """Display a section of the overview with 4 charts"""
+    """Display a section of the overview with 4 tables"""
     
     if continent_filter:
         section_df = df[df['Continent'] == continent_filter].copy()
-        color = {
-            'AFRICA': '#FF6B6B',
-            'ASIA': '#4ECDC4',
-            'EUROPE': '#45B7D1',
-            'AMERICAS': '#96CEB4',
-            'OCEANIA': '#FFEAA7'
-        }.get(continent_filter, '#4ECDC4')
     else:
         section_df = df.copy()
-        color = '#6C5CE7'
     
     st.markdown(f"### {section_title}")
     st.markdown("---")
@@ -96,48 +69,50 @@ def display_overview_section(df, section_title, continent_filter=None):
         st.info(f"No data available for {section_title}")
         return
     
-    # Row 1: Two charts side by side
+    # Row 1: Two tables side by side
     col1, col2 = st.columns(2)
     
     with col1:
-        # Chart 1: By Countries or Continents
+        # Table 1: By Countries or Continents
         if continent_filter:
-            # By Countries within continent
             country_counts = section_df.groupby('Country').size().reset_index(name='Count')
-            country_counts = country_counts.sort_values('Count', ascending=False).head(15)
-            chart_title = f"By Country ({len(section_df)} Total)"
+            country_counts = country_counts.sort_values('Count', ascending=False)
+            country_counts.columns = ['Country', 'Opportunities']
+            st.markdown(f"**By Country ({len(section_df)} Total)**")
         else:
-            # By Continents (Global)
             country_counts = section_df[section_df['Continent'] != 'Unknown'].groupby('Continent').size().reset_index(name='Count')
             country_counts = country_counts.sort_values('Count', ascending=False)
-            chart_title = f"By Continent ({len(section_df)} Total)"
+            country_counts.columns = ['Continent', 'Opportunities']
+            st.markdown(f"**By Continent ({len(section_df)} Total)**")
         
-        fig1 = create_bar_chart(country_counts, country_counts.columns[0], 'Count', chart_title, color)
-        st.plotly_chart(fig1, use_container_width=True)
+        st.dataframe(country_counts, use_container_width=True, hide_index=True, height=300)
     
     with col2:
-        # Chart 2: By Federal Agency/Department
+        # Table 2: By Federal Agency/Department
         agency_counts = section_df.groupby('Federal Agency/Department').size().reset_index(name='Count')
-        agency_counts = agency_counts.sort_values('Count', ascending=False).head(10)
-        fig2 = create_bar_chart(agency_counts, 'Federal Agency/Department', 'Count', 'By Federal Agency/Department', color)
-        st.plotly_chart(fig2, use_container_width=True)
+        agency_counts = agency_counts.sort_values('Count', ascending=False)
+        agency_counts.columns = ['Federal Agency/Department', 'Opportunities']
+        st.markdown("**By Federal Agency/Department**")
+        st.dataframe(agency_counts, use_container_width=True, hide_index=True, height=300)
     
-    # Row 2: Two charts side by side
+    # Row 2: Two tables side by side
     col3, col4 = st.columns(2)
     
     with col3:
-        # Chart 3: By Industry Classification
+        # Table 3: By Industry Classification
         industry_counts = section_df.groupby('Industry Classification').size().reset_index(name='Count')
-        industry_counts = industry_counts.sort_values('Count', ascending=False).head(10)
-        fig3 = create_bar_chart(industry_counts, 'Industry Classification', 'Count', 'By Industry Classification', color)
-        st.plotly_chart(fig3, use_container_width=True)
+        industry_counts = industry_counts.sort_values('Count', ascending=False)
+        industry_counts.columns = ['Industry Classification', 'Opportunities']
+        st.markdown("**By Industry Classification**")
+        st.dataframe(industry_counts, use_container_width=True, hide_index=True, height=300)
     
     with col4:
-        # Chart 4: By Product/Service Classification
+        # Table 4: By Product/Service Classification
         product_counts = section_df.groupby('Product/Service Classification').size().reset_index(name='Count')
-        product_counts = product_counts.sort_values('Count', ascending=False).head(10)
-        fig4 = create_bar_chart(product_counts, 'Product/Service Classification', 'Count', 'By Product/Service Classification', color)
-        st.plotly_chart(fig4, use_container_width=True)
+        product_counts = product_counts.sort_values('Count', ascending=False)
+        product_counts.columns = ['Product/Service Classification', 'Opportunities']
+        st.markdown("**By Product/Service Classification**")
+        st.dataframe(product_counts, use_container_width=True, hide_index=True, height=300)
     
     st.markdown("<br>", unsafe_allow_html=True)
 
