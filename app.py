@@ -31,7 +31,6 @@ def load_continent_mapping():
         for continent in continent_df.columns:
             for cell in continent_df[continent].dropna():
                 # Extract all quoted values from the cell
-                # Format is like: "Algeria", "DZA"
                 matches = re.findall(r'"([^"]+)"', str(cell))
                 for match in matches:
                     mapping[match.strip()] = continent
@@ -48,24 +47,19 @@ def get_continent(country, mapping):
         return "Unknown"
     country = str(country).strip()
     
-    # Try exact match
     if country in mapping:
         return mapping[country]
-    # Try uppercase
     if country.upper() in mapping:
         return mapping[country.upper()]
-    # Try lowercase
     if country.lower() in mapping:
         return mapping[country.lower()]
     
     return "Unknown"
 
 def main():
-    # Title and subtitle
     st.markdown("<h1 style='margin-bottom: 0;'>SAM.gov Global Contract Opportunities</h1>", unsafe_allow_html=True)
     st.markdown("<p style='color: gray; margin-top: 0;'>Project by Jack Kozmetsky</p>", unsafe_allow_html=True)
     
-    # Load data
     df = load_data()
     continent_mapping = load_continent_mapping()
     
@@ -73,20 +67,16 @@ def main():
         st.warning("No data available. Please run data_processor.py first.")
         return
     
-    # Add continent column using 'Country' column
     df['Continent'] = df['Country'].apply(lambda x: get_continent(x, continent_mapping))
     
-    # Calculate continent counts
     continent_counts = df[df['Continent'] != 'Unknown'].groupby('Continent').size().reset_index(name='Count')
     total_opportunities = continent_counts['Count'].sum()
     
-    # If no data matched, show what countries are in the data for debugging
     if total_opportunities == 0:
         st.warning("No countries matched the continent mapping.")
         st.write("Sample countries in data:", df['Country'].dropna().unique()[:10].tolist())
         return
     
-    # Create pie chart
     fig = px.pie(
         continent_counts, 
         values='Count', 
@@ -123,14 +113,12 @@ def main():
         ]
     )
     
-    # Display pie chart centered
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.plotly_chart(fig, use_container_width=True)
     
     st.markdown("---")
     
-    # Create tabs for each continent
     tab_africa, tab_asia, tab_europe, tab_americas, tab_oceania = st.tabs([
         "🌍 Africa", "🌏 Asia", "🌍 Europe", "🌎 Americas", "🌏 Oceania"
     ])
@@ -145,7 +133,6 @@ def main():
             
             st.markdown(f"**{len(continent_df)} opportunities in {continent_name}**")
             
-            # Date filter
             col1, col2 = st.columns(2)
             with col1:
                 min_date = continent_df['DatePosted'].min()
@@ -166,11 +153,9 @@ def main():
                     key=f"end_{continent_name}"
                 )
             
-            # Filter by date
             mask = (continent_df['DatePosted'].dt.date >= start_date) & (continent_df['DatePosted'].dt.date <= end_date)
             filtered_df = continent_df[mask]
             
-            # Country filter
             countries = sorted(filtered_df['Country'].dropna().unique())
             selected_countries = st.multiselect(
                 "Filter by Country",
@@ -182,7 +167,6 @@ def main():
             if selected_countries:
                 filtered_df = filtered_df[filtered_df['Country'].isin(selected_countries)]
             
-            # Display columns
             display_cols = [
                 'Notice ID', 'Date Posted', 'Country', 'Federal Agency/Department',
                 'Industry Classification', 'Product/Service Classification', 
@@ -190,14 +174,15 @@ def main():
             ]
             available_cols = [c for c in display_cols if c in filtered_df.columns]
             
-            # Show dataframe
+            # Sort by DatePosted then select only display columns
+            sorted_df = filtered_df.sort_values('DatePosted', ascending=False)
+            
             st.dataframe(
-                filtered_df[available_cols].sort_values('DatePosted', ascending=False),
+                sorted_df[available_cols],
                 use_container_width=True,
                 height=400
             )
             
-            # Download button
             csv = filtered_df.to_csv(index=False)
             st.download_button(
                 label=f"Download {continent_name} Data (CSV)",
@@ -207,14 +192,12 @@ def main():
                 key=f"download_{continent_name}"
             )
     
-    # Display data for each continent
     display_continent_data("AFRICA", tab_africa)
     display_continent_data("ASIA", tab_asia)
     display_continent_data("EUROPE", tab_europe)
     display_continent_data("AMERICAS", tab_americas)
     display_continent_data("OCEANIA", tab_oceania)
     
-    # Footer
     st.markdown("---")
     st.markdown(
         f"<p style='text-align: center; color: gray;'>Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>",
